@@ -35,11 +35,27 @@
 
 ## 📂 Project Structure
 
-- `src/app`: App Router pages (Reporting, Dashboard).
-- `src/components`: Modular UI components (Reporting forms, Dashboard maps).
-- `src/lib`: Core services (Supabase client, Utils).
-- `supabase/migrations`: Database schema versioning.
 - `docs`: Architecture, Assumptions, and Presentation outlines.
+- `server`: MERN AI Backend (Telemetry, Hotspots, Legal).
+- `cv-service`: Python YOLOv8 Microservice.
+
+## 📺 Live Demo Script
+
+1. **Sign In**: Use `demo@roadwatch.ai` / `demo123`.
+2. **Citizen Report**: Create a new report, upload a road photo, and click **"Analyze with AI"**.
+3. **Intelligence Engine**: Go to the **Intelligence** tab to see the Chennai Hotspot Map.
+4. **Deep Dive**: Click a **Red Segment** to see the 100-point AI safety summary.
+5. **Admin Flow**: Change report status to **"Verified"** and check the resolution timeline.
+
+## 📄 Demo Accounts
+- **Citizen**: `demo@roadwatch.ai` / `demo123`
+- **Admin**: `admin@roadwatch.ai` / `admin123`
+
+## 🛠 Required Env Vars
+Ensure the following are set in `.env.local` (Frontend) and `server/.env` (Backend):
+- `GOOGLE_GENERATIVE_AI_API_KEY`: Your Gemini API Key.
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
+- `MONGODB_URI`: MongoDB connection string.
 
 ## 🛡 License
 MIT
