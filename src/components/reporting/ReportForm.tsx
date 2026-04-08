@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { Camera, MapPin, AlertTriangle, Send, Loader2 } from 'lucide-react'
+import { Camera, MapPin, AlertTriangle, Send, Loader2, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/db/supabase'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +26,8 @@ export default function ReportForm() {
   const supabase = createClient()
   
   const [loading, setLoading] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [aiResult, setAiResult] = useState<{ summary: string, suggested_severity: string, responsible_department: string } | null>(null)
   const [formData, setFormData] = useState({
     issue_type: '',
     description: '',
@@ -34,6 +36,34 @@ export default function ReportForm() {
     severity: 'medium',
     media_url: ''
   })
+
+  const handleAiAnalyze = async () => {
+    if (!formData.issue_type || !formData.description) {
+      alert('Please select issue type and provide a description first')
+      return
+    }
+
+    setAnalyzing(true)
+    try {
+      const res = await fetch('/api/analyze-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issueType: formData.issue_type,
+          description: formData.description
+        })
+      })
+      const data = await res.json()
+      if (data.summary) {
+        setAiResult(data)
+        setFormData(prev => ({ ...prev, severity: data.suggested_severity.toLowerCase() }))
+      }
+    } catch (error) {
+      console.error('AI Analysis failed:', error)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,7 +85,8 @@ export default function ReportForm() {
           lat: formData.lat,
           lng: formData.lng,
           severity: formData.severity,
-          status: 'open'
+          status: 'open',
+          ai_summary: aiResult?.summary
         })
         .select()
         .single()
@@ -136,7 +167,46 @@ export default function ReportForm() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
+            <button
+              type="button"
+              onClick={handleAiAnalyze}
+              disabled={analyzing || !formData.description}
+              className="mt-2 text-xs font-bold text-blue-600 flex items-center gap-1 hover:text-blue-700 disabled:opacity-50"
+            >
+              <Sparkles className={cn("h-3 w-3", analyzing && "animate-spin")} />
+              {analyzing ? 'Analyzing...' : 'Analyze with AI'}
+            </button>
           </div>
+
+          {/* AI Result Preview */}
+          {aiResult && (
+            <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-2 animate-in fade-in slide-in-from-top-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-blue-600 uppercase flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  AI Generated Summary
+                </span>
+                <button 
+                  type="button" 
+                  onClick={() => setAiResult(null)}
+                  className="text-[10px] text-slate-400 hover:text-slate-600"
+                >
+                  Clear
+                </button>
+              </div>
+              <p className="text-xs italic text-slate-700 leading-relaxed">"{aiResult.summary}"</p>
+              <div className="pt-2 flex gap-4 text-[10px]">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground uppercase font-bold">Priority level</span>
+                  <span className="font-bold text-blue-700 capitalize">{aiResult.suggested_severity}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground uppercase font-bold">Likely Authority</span>
+                  <span className="font-bold text-blue-700">{aiResult.responsible_department}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Media Placeholder */}
           <div className="p-6 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-muted-foreground gap-3 hover:bg-slate-50 transition-colors cursor-pointer">
