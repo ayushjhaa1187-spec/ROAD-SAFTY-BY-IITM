@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/db/supabase'
 import { formatDate, cn } from '@/lib/utils'
-import { MoreHorizontal, ExternalLink, Filter } from 'lucide-react'
+import { MoreHorizontal, ExternalLink, Filter, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
 export function ReportList() {
   const [reports, setReports] = useState<any[]>([])
@@ -16,7 +17,7 @@ export function ReportList() {
 
   const fetchReports = async () => {
     setLoading(true)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('reports')
       .select('*')
       .order('created_at', { ascending: false })
@@ -52,7 +53,6 @@ export function ReportList() {
               <th className="px-6 py-4">Issue Type</th>
               <th className="px-6 py-4">Level</th>
               <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4">Reported On</th>
               <th className="px-6 py-4 text-right">Action</th>
             </tr>
           </thead>
@@ -60,26 +60,26 @@ export function ReportList() {
             {loading ? (
               Array(5).fill(0).map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td colSpan={5} className="px-6 py-4 h-16 bg-slate-50/20" />
+                  <td colSpan={4} className="px-6 py-4 h-16 bg-slate-50/20" />
                 </tr>
               ))
             ) : reports.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
                   No reports found.
                 </td>
               </tr>
             ) : (
               reports.map((report) => (
-                <tr key={report.id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={report.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4">
-                    <span className="font-bold text-sm block">{report.issue_type}</span>
+                    <span className="font-bold text-sm block capitalize">{report.issue_type.replace('_', ' ')}</span>
                     <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[200px]">{report.description}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={cn(
                       "px-2 py-1 rounded-lg text-[10px] font-bold uppercase",
-                      report.severity === 'critical' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'
+                      report.severity === 'critical' || report.severity === 'high' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'
                     )}>
                       {report.severity}
                     </span>
@@ -92,13 +92,14 @@ export function ReportList() {
                       {report.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {formatDate(report.created_at)}
-                  </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="p-2 hover:bg-white border transparent hover:border-slate-200 rounded-xl transition-all">
-                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                    <Link 
+                      href={`/dashboard/reports/${report.id}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-900 hover:text-white rounded-lg text-[10px] font-bold transition-all"
+                    >
+                      Details
+                      <ChevronRight className="h-3 w-3" />
+                    </Link>
                   </td>
                 </tr>
               ))

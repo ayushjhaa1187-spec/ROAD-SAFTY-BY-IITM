@@ -27,6 +27,9 @@ export default function ReportForm() {
   
   const [loading, setLoading] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [aiResult, setAiResult] = useState<{ summary: string, suggested_severity: string, responsible_department: string } | null>(null)
   const [formData, setFormData] = useState({
     issue_type: '',
@@ -36,6 +39,36 @@ export default function ReportForm() {
     severity: 'medium',
     media_url: ''
   })
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setMediaFile(file)
+      setMediaPreview(URL.createObjectURL(file))
+    }
+  }
+
+  const uploadMedia = async (file: File) => {
+    setUploading(true)
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random()}.${fileExt}`
+    const filePath = `reports/${fileName}`
+
+    const { data, error } = await supabase.storage
+      .from('report-media')
+      .upload(filePath, file)
+
+    if (error) {
+      console.error('Upload error:', error)
+      return null
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('report-media')
+      .getPublicUrl(filePath)
+
+    return publicUrl
+  }
 
   const handleAiAnalyze = async () => {
     if (!formData.issue_type || !formData.description) {
@@ -76,6 +109,11 @@ export default function ReportForm() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       
+      let finalMediaUrl = ''
+      if (mediaFile) {
+        finalMediaUrl = await uploadMedia(mediaFile) || ''
+      }
+
       const { data, error } = await supabase
         .from('reports')
         .insert({
@@ -92,6 +130,14 @@ export default function ReportForm() {
         .single()
 
       if (error) throw error
+
+      if (finalMediaUrl) {
+        await supabase.from('report_media').insert({
+          report_id: data.id,
+          url: finalMediaUrl,
+          media_type: 'image'
+        })
+      }
 
       router.push(`/dashboard?new_report=${data.id}`)
     } catch (error) {
@@ -208,13 +254,40 @@ export default function ReportForm() {
             </div>
           )}
 
-          {/* Media Placeholder */}
-          <div className="p-6 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-muted-foreground gap-3 hover:bg-slate-50 transition-colors cursor-pointer">
-            <div className="p-3 bg-slate-100 rounded-full">
-              <Camera className="h-6 w-6" />
+          {/* Media Upload */}
+          <div className="relative group">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="absolute inset-0 opacity-0 cursor-pointer z-10"
+            />
+            <div className={cn(
+              "p-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-muted-foreground gap-3 transition-all",
+              mediaPreview ? "border-blue-500 bg-blue-50/10" : "border-slate-200 group-hover:bg-slate-50"
+            )}>
+              {mediaPreview ? (
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm">
+                  <img src={mediaPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-white text-xs font-bold">Change Image</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="p-3 bg-slate-100 rounded-full group-hover:bg-blue-100 transition-colors">
+                    <Camera className="h-6 w-6 group-hover:text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium">Add Photo / Video</span>
+                  <span className="text-xs">Supports JPG, PNG up to 10MB</span>
+                </>
+              )}
             </div>
-            <span className="text-sm font-medium">Add Photo / Video</span>
-            <span className="text-xs">Supports JPG, PNG, MP4 up to 10MB</span>
+            {uploading && (
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              </div>
+            )}
           </div>
         </div>
 
